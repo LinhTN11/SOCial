@@ -67,6 +67,9 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         padding: spacing.m,
         marginTop: spacing.xl * 2,
+        marginHorizontal: spacing.xl,
+        backgroundColor: '#FEE2E2', // Light red bg
+        borderRadius: 25,
     },
     logoutText: {
         color: colors.error,

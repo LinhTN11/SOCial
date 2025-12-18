@@ -5,7 +5,10 @@ import { colors, spacing } from '../theme';
 import { Story } from '../types';
 import { X, MoreVertical, Trash2 } from 'lucide-react-native';
 import { useAuthStore } from '../store/useAuthStore';
+import ActionSheet, { ActionItem } from '../components/ActionSheet';
 import * as ImagePicker from 'expo-image-picker';
+import ImageCropper from '../components/ImageCropper';
+import Toast from '../components/Toast';
 
 const { width, height } = Dimensions.get('window');
 const STORY_DURATION = 5000;
@@ -23,6 +26,18 @@ export default function StoryViewerScreen() {
     const { stories, initialIndex } = route.params;
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [isPaused, setIsPaused] = useState(false); // Pause state
+
+    // Toast State
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToastMessage(message);
+        setToastType(type);
+        setToastVisible(true);
+    };
+
     const [progressValue, setProgressValue] = useState(0); // Track progress value
     const progress = useRef(new Animated.Value(0)).current;
     const animationRef = useRef<Animated.CompositeAnimation | null>(null);
@@ -54,6 +69,23 @@ export default function StoryViewerScreen() {
         animationRef.current.start(({ finished }) => {
             if (finished && !isPaused) goToNextStory();
         });
+    };
+
+    const [actionSheetVisible, setActionSheetVisible] = useState(false);
+    const [actionSheetActions, setActionSheetActions] = useState<ActionItem[]>([]);
+    const [actionSheetTitle, setActionSheetTitle] = useState('');
+
+    const handleOptions = () => {
+        setActionSheetTitle("Story Options");
+        setActionSheetActions([
+            {
+                label: "Delete Story",
+                isDestructive: true,
+                icon: Trash2,
+                onPress: handleDelete
+            }
+        ]);
+        setActionSheetVisible(true);
     };
 
     const handlePause = () => {
@@ -93,45 +125,59 @@ export default function StoryViewerScreen() {
     };
 
     const handleDelete = async () => {
-        Alert.alert(
-            "Delete Story",
-            "Are you sure?",
-            [
-                { text: "Cancel", style: "cancel" },
-                {
-                    text: "Delete",
-                    style: "destructive",
-                    onPress: async () => {
-                        try {
-                            const { deleteStory } = await import('../services/storyService');
-                            await deleteStory(currentStory.id);
-                            Alert.alert("Success", "Story deleted");
-                            navigation.goBack();
-                        } catch (error) {
-                            Alert.alert("Error", "Failed to delete story");
-                        }
+        setActionSheetTitle("Are you sure you want to delete this story?");
+        setActionSheetActions([
+            {
+                label: "Delete",
+                isDestructive: true,
+                icon: Trash2,
+                onPress: async () => {
+                    try {
+                        const { deleteStory } = await import('../services/storyService');
+                        await deleteStory(currentStory.id);
+                        setActionSheetVisible(false);
+                        showToast("Story deleted successfully", "success");
+                        setTimeout(() => navigation.goBack(), 1500);
+                    } catch (error) {
+                        showToast("Failed to delete story", "error");
                     }
                 }
-            ]
-        );
+            },
+            {
+                label: "Cancel",
+                isDestructive: false,
+                onPress: () => setActionSheetVisible(false)
+            }
+        ]);
+        setActionSheetVisible(true);
     };
+
+    const [tempImageUri, setTempImageUri] = useState<string | null>(null);
 
     const handleAddStory = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [9, 16],
-            quality: 0.8,
+            allowsEditing: false, // Set to false to allow custom cropping
+            quality: 1, // High quality for cropping
         });
 
-        if (!result.canceled && user) {
+        if (!result.canceled) {
+            setTempImageUri(result.assets[0].uri);
+        }
+    };
+
+    const handleCropConfirm = async (uri: string) => {
+        setTempImageUri(null); // Close cropper
+        if (user) {
             try {
                 const { uploadStory } = await import('../services/storyService');
-                await uploadStory(user.uid, user.username, user.photoURL, result.assets[0].uri);
-                Alert.alert("Success", "Story added!");
-                navigation.goBack();
+                await uploadStory(user.uid, user.username, user.photoURL, uri);
+                // Alert.alert("Success", "Story added!");
+                showToast("Story added successfully", "success");
+                setTimeout(() => navigation.goBack(), 1500);
             } catch (error) {
-                Alert.alert("Error", "Failed to add story");
+                // Alert.alert("Error", "Failed to add story");
+                showToast("Failed to add story", "error");
             }
         }
     };
@@ -143,77 +189,89 @@ export default function StoryViewerScreen() {
 
     return (
         <View style={styles.container}>
-            <SafeAreaView style={styles.headerContainer}>
-                <View style={styles.progressBarContainer}>
-                    {stories.map((_, index) => (
-                        <View key={`progress-${index}`} style={styles.progressBarBackground}>
-                            <Animated.View
-                                style={[
-                                    styles.progressBarFill,
-                                    {
-                                        width: index === currentIndex ? progressWidth : index < currentIndex ? '100%' : '0%'
-                                    }
-                                ]}
-                            />
-                        </View>
-                    ))}
-                </View>
+            <View style={styles.storyCard}>
+                <Image
+                    source={{ uri: currentStory.imageUrl || 'https://via.placeholder.com/400x800?text=Story+Not+Available' }}
+                    style={styles.image}
+                    resizeMode="cover"
+                    onError={(error) => {
+                        console.error('❌ Story image load error:', error.nativeEvent.error);
+                        console.log('❌ Failed imageUrl:', currentStory.imageUrl);
+                    }}
+                    onLoad={() => {
+                        console.log('✅ Story image loaded:', currentStory.imageUrl);
+                    }}
+                />
 
-                <View style={styles.userInfo}>
-                    <View style={styles.userInfoLeft}>
-                        <Image source={{ uri: currentStory.userAvatar || 'https://via.placeholder.com/40' }} style={styles.avatar} />
-                        <View>
-                            <Text style={styles.username}>{currentStory.username}</Text>
-                            <Text style={styles.timeAgo}>{new Date(currentStory.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                        </View>
+                <View style={styles.headerContainer}>
+                    <View style={styles.progressBarContainer}>
+                        {stories.map((_, index) => (
+                            <View key={`progress-${index}`} style={styles.progressBarBackground}>
+                                <Animated.View
+                                    style={[
+                                        styles.progressBarFill,
+                                        {
+                                            width: index === currentIndex ? progressWidth : index < currentIndex ? '100%' : '0%'
+                                        }
+                                    ]}
+                                />
+                            </View>
+                        ))}
                     </View>
-                    <View style={styles.headerButtons}>
-                        {isOwnStory && (
-                            <TouchableOpacity
-                                style={styles.headerButton}
-                                onPress={() => {
-                                    Alert.alert(
-                                        'Story Options',
-                                        'What would you like to do?',
-                                        [
-                                            { text: 'Cancel', style: 'cancel' },
-                                            {
-                                                text: 'Delete Story',
-                                                style: 'destructive',
-                                                onPress: handleDelete
-                                            }
-                                        ]
-                                    );
-                                }}
-                            >
-                                <MoreVertical color={colors.white} size={24} />
+
+                    <View style={styles.userInfo}>
+                        <View style={styles.userInfoLeft}>
+                            <Image source={{ uri: currentStory.userAvatar || 'https://via.placeholder.com/40' }} style={styles.avatar} />
+                            <View>
+                                <Text style={styles.username}>{currentStory.username}</Text>
+                                <Text style={styles.timeAgo}>{new Date(currentStory.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+                            </View>
+                        </View>
+                        <View style={styles.headerButtons}>
+                            {isOwnStory && (
+                                <TouchableOpacity
+                                    style={styles.headerButton}
+                                    onPress={handleOptions}
+                                >
+                                    <MoreVertical color={colors.white} size={24} />
+                                </TouchableOpacity>
+                            )}
+                            <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
+                                <X color={colors.white} size={24} />
                             </TouchableOpacity>
-                        )}
-                        <TouchableOpacity style={styles.headerButton} onPress={() => navigation.goBack()}>
-                            <X color={colors.white} size={24} />
-                        </TouchableOpacity>
+                        </View>
                     </View>
                 </View>
-            </SafeAreaView>
 
-            <Image
-                source={{ uri: currentStory.imageUrl || 'https://via.placeholder.com/400x800?text=Story+Not+Available' }}
-                style={styles.image}
-                resizeMode="cover"
-                onError={(error) => {
-                    console.error('❌ Story image load error:', error.nativeEvent.error);
-                    console.log('❌ Failed imageUrl:', currentStory.imageUrl);
-                }}
-                onLoad={() => {
-                    console.log('✅ Story image loaded:', currentStory.imageUrl);
-                }}
+                <View style={styles.overlayContainer}>
+                    <TouchableOpacity style={styles.leftOverlay} onPress={goToPrevStory} />
+                    <TouchableOpacity style={styles.middleOverlay} onPress={handlePause} />
+                    <TouchableOpacity style={styles.rightOverlay} onPress={goToNextStory} />
+                </View>
+            </View>
+
+            <ActionSheet
+                visible={actionSheetVisible}
+                onClose={() => setActionSheetVisible(false)}
+                title={actionSheetTitle}
+                actions={actionSheetActions}
             />
 
-            <View style={styles.overlayContainer}>
-                <TouchableOpacity style={styles.leftOverlay} onPress={goToPrevStory} />
-                <TouchableOpacity style={styles.middleOverlay} onPress={handlePause} />
-                <TouchableOpacity style={styles.rightOverlay} onPress={goToNextStory} />
-            </View>
+            {tempImageUri && (
+                <ImageCropper
+                    imageUri={tempImageUri}
+                    visible={!!tempImageUri}
+                    onCrop={handleCropConfirm}
+                    onCancel={() => setTempImageUri(null)}
+                />
+            )}
+
+            <Toast
+                visible={toastVisible}
+                message={toastMessage}
+                type={toastType}
+                onDismiss={() => setToastVisible(false)}
+            />
         </View>
     );
 }
@@ -222,19 +280,35 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: 'black',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    storyCard: {
+        width: width - 24, // Card effect: slightly narrower than screen
+        height: height - 80, // Card effect: slightly shorter than screen
+        borderRadius: 20,
+        overflow: 'hidden',
+        backgroundColor: colors.gray,
+        position: 'relative',
     },
     image: {
-        width: width,
-        height: height,
+        width: '100%',
+        height: '100%',
         position: 'absolute',
     },
     headerContainer: {
         zIndex: 10,
-        paddingTop: spacing.xl + 10,
+        paddingTop: spacing.m, // Reduced padding since we have card margins
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        backgroundColor: 'rgba(0,0,0,0.1)', // Slight gradient/dim for visibility
+        paddingBottom: spacing.s,
     },
     progressBarContainer: {
         flexDirection: 'row',
-        paddingHorizontal: spacing.m,
+        paddingHorizontal: spacing.s,
         marginBottom: spacing.s,
         height: 3,
     },
@@ -254,7 +328,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: spacing.m,
+        paddingHorizontal: spacing.s,
     },
     userInfoLeft: {
         flexDirection: 'row',
@@ -269,10 +343,17 @@ const styles = StyleSheet.create({
     username: {
         color: colors.white,
         fontWeight: 'bold',
+        fontSize: 13,
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 3,
     },
     timeAgo: {
-        color: 'rgba(255,255,255,0.7)',
-        fontSize: 12,
+        color: 'rgba(255,255,255,0.8)',
+        fontSize: 11,
+        textShadowColor: 'rgba(0, 0, 0, 0.5)',
+        textShadowOffset: { width: 1, height: 1 },
+        textShadowRadius: 3,
     },
     headerButtons: {
         flexDirection: 'row',

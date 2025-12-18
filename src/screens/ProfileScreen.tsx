@@ -174,14 +174,16 @@ export default function ProfileScreen() {
     profileInfo: {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
-      marginBottom: spacing.m,
+      marginBottom: spacing.l, // More space
     },
     avatar: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
+      width: 86, // Slightly larger
+      height: 86,
+      borderRadius: 43,
       marginRight: spacing.l,
       backgroundColor: colors.gray,
+      borderWidth: 1, // Subtle border
+      borderColor: colors.border,
     },
     stats: {
       flex: 1,
@@ -195,45 +197,53 @@ export default function ProfileScreen() {
       fontWeight: 'bold' as const,
       fontSize: 18,
       color: colors.text,
+      marginBottom: 2,
     },
     statLabel: {
-      color: colors.text,
-      marginTop: 8,
+      color: colors.textSecondary, // Softer label
+      fontSize: 13,
     },
     usernameContainer: {
       flexDirection: 'row' as const,
       alignItems: 'center' as const,
-      marginBottom: spacing.s / 2,
+      marginBottom: 4,
     },
     username: {
       fontWeight: 'bold' as const,
-      fontSize: 16,
+      fontSize: 18,
       color: colors.text,
     },
     bio: {
       color: colors.text,
-      marginBottom: spacing.m,
+      marginBottom: spacing.l,
+      fontSize: 14,
+      lineHeight: 20,
     },
     editButton: {
+      backgroundColor: colors.gray, // Use surface/gray background
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 5,
-      padding: spacing.s,
+      borderRadius: 8, // Rounded
+      paddingVertical: 6,
+      width: '100%',
       alignItems: 'center' as const,
+      marginBottom: spacing.m,
     },
     editButtonText: {
-      fontWeight: 'bold' as const,
+      fontWeight: '600' as const,
       color: colors.text,
+      fontSize: 14,
     },
     actionButtons: {
       flexDirection: 'row' as const,
       gap: spacing.s,
+      marginBottom: spacing.m,
     },
     followButton: {
       flex: 1,
       backgroundColor: colors.primary,
-      borderRadius: 5,
-      padding: spacing.s,
+      borderRadius: 8,
+      paddingVertical: 8,
       alignItems: 'center' as const,
     },
     followingButton: {
@@ -242,7 +252,7 @@ export default function ProfileScreen() {
       borderColor: colors.border,
     },
     followButtonText: {
-      fontWeight: 'bold' as const,
+      fontWeight: '600' as const,
       color: colors.white,
     },
     followingButtonText: {
@@ -253,12 +263,12 @@ export default function ProfileScreen() {
       backgroundColor: colors.background,
       borderWidth: 1,
       borderColor: colors.border,
-      borderRadius: 5,
-      padding: spacing.s,
+      borderRadius: 8,
+      paddingVertical: 8,
       alignItems: 'center' as const,
     },
     messageButtonText: {
-      fontWeight: 'bold' as const,
+      fontWeight: '600' as const,
       color: colors.text,
     },
     tabContainer: {
@@ -401,7 +411,7 @@ export default function ProfileScreen() {
         )}
         <View style={styles.profileInfo}>
           <Image
-            source={{ uri: user?.photoURL || 'https://via.placeholder.com/80' }}
+            source={{ uri: (isOwnProfile ? currentUser?.photoURL : user?.photoURL) || 'https://via.placeholder.com/80' }}
             style={styles.avatar}
           />
           <View style={styles.stats}>
@@ -409,12 +419,12 @@ export default function ProfileScreen() {
               <Text style={styles.statValue}>{posts.length}</Text>
               <Text style={styles.statLabel}>Posts</Text>
             </View>
-            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('UserList', { type: 'followers', entityId: user?.uid, title: 'Followers' })}>
-              <Text style={styles.statValue}>{user?.followers.length || 0}</Text>
+            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('UserList', { type: 'followers', entityId: isOwnProfile ? currentUser?.uid : user?.uid, title: 'Followers' })}>
+              <Text style={styles.statValue}>{(isOwnProfile ? currentUser?.followers?.length : user?.followers?.length) || 0}</Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('UserList', { type: 'following', entityId: user?.uid, title: 'Following' })}>
-              <Text style={styles.statValue}>{user?.following.length || 0}</Text>
+            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('UserList', { type: 'following', entityId: isOwnProfile ? currentUser?.uid : user?.uid, title: 'Following' })}>
+              <Text style={styles.statValue}>{(isOwnProfile ? currentUser?.following?.length : user?.following?.length) || 0}</Text>
               <Text style={styles.statLabel}>Following</Text>
             </TouchableOpacity>
           </View>
@@ -422,13 +432,13 @@ export default function ProfileScreen() {
 
         {isOwnProfile ? (
           <TouchableOpacity onPress={handleAccountMenu} style={styles.usernameContainer}>
-            <Text style={styles.username}>{user?.username}</Text>
+            <Text style={styles.username}>{currentUser?.username}</Text>
             <ChevronDown color={colors.text} size={16} strokeWidth={2.5} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         ) : (
           <Text style={styles.username}>{user?.username}</Text>
         )}
-        <Text style={styles.bio}>{user?.bio || 'No bio yet'}</Text>
+        <Text style={styles.bio}>{(isOwnProfile ? currentUser?.bio : user?.bio) || 'No bio yet'}</Text>
 
         {isOwnProfile ? (
           <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>

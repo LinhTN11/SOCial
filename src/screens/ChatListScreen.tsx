@@ -94,20 +94,23 @@ const styles = StyleSheet.create({
     },
     roomItem: {
         flexDirection: 'row',
-        padding: spacing.m,
+        paddingVertical: spacing.m,
+        paddingHorizontal: spacing.l,
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
         alignItems: 'center',
+        backgroundColor: colors.background,
     },
     avatar: {
-        width: 50,
-        height: 50,
-        borderRadius: 25,
+        width: 56, // Larger avatar
+        height: 56,
+        borderRadius: 28,
         marginRight: spacing.m,
         backgroundColor: colors.gray,
     },
     roomInfo: {
         flex: 1,
+        justifyContent: 'center',
     },
     username: {
         fontWeight: 'bold',

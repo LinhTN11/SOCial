@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, Image, StyleSheet, TouchableOpacity, Dimensions, Alert } from 'react-native';
-import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal } from 'lucide-react-native';
+import { Heart, MessageCircle, Send, Bookmark, MoreHorizontal, Trash2, Flag } from 'lucide-react-native';
+import ActionSheet, { ActionItem } from './ActionSheet';
 import { Post } from '../types';
 import { colors, spacing, typography } from '../theme';
 import { toggleLikePost, deletePost, toggleSavePost } from '../services/postService';
@@ -27,9 +28,15 @@ export function PostItem({ post, onDelete }: PostItemProps) {
     const [isSaved, setIsSaved] = useState(user?.savedPosts?.includes(post.id) || false);
     const [currentUserAvatar, setCurrentUserAvatar] = useState(post.userAvatar);
 
-    // Fetch current user avatar in realtime
+    // Fetch current user avatar or use local store for self
     useEffect(() => {
         const fetchUserAvatar = async () => {
+            if (user && post.userId === user.uid) {
+                // If it's the current user's post, use the live data from store
+                setCurrentUserAvatar(user.photoURL);
+                return;
+            }
+
             try {
                 const { getUserProfile } = await import('../services/userService');
                 const userProfile = await getUserProfile(post.userId);
@@ -41,7 +48,7 @@ export function PostItem({ post, onDelete }: PostItemProps) {
             }
         };
         fetchUserAvatar();
-    }, [post.userId]);
+    }, [post.userId, user?.photoURL]);
 
 
     // Update isSaved when user.savedPosts changes
@@ -123,30 +130,52 @@ export function PostItem({ post, onDelete }: PostItemProps) {
         }
     };
 
+    const [actionSheetVisible, setActionSheetVisible] = useState(false);
+    const [actionSheetActions, setActionSheetActions] = useState<ActionItem[]>([]);
+    const [actionSheetTitle, setActionSheetTitle] = useState('');
+
     const handleOptions = () => {
         if (user?.uid === post.userId) {
-            Alert.alert(
-                "Options",
-                "Manage your post",
-                [
-                    { text: "Cancel", style: "cancel" },
-                    {
-                        text: "Delete",
-                        style: "destructive",
-                        onPress: async () => {
-                            try {
-                                await deletePost(post.id);
-                                if (onDelete) onDelete(post.id);
-                            } catch (error) {
-                                Alert.alert("Error", "Failed to delete post");
-                            }
-                        }
+            setActionSheetTitle("Manage Post");
+            setActionSheetActions([
+                {
+                    label: "Delete Post",
+                    isDestructive: true,
+                    icon: Trash2,
+                    onPress: () => {
+                        Alert.alert(
+                            "Delete Post",
+                            "Are you sure you want to delete this post?",
+                            [
+                                { text: "Cancel", style: "cancel" },
+                                {
+                                    text: "Delete",
+                                    style: "destructive",
+                                    onPress: async () => {
+                                        try {
+                                            await deletePost(post.id);
+                                            if (onDelete) onDelete(post.id);
+                                        } catch (error) {
+                                            Alert.alert("Error", "Failed to delete post");
+                                        }
+                                    }
+                                }
+                            ]
+                        );
                     }
-                ]
-            );
+                }
+            ]);
         } else {
-            Alert.alert("Options", "Report or hide this post (Not implemented)");
+            setActionSheetTitle("Post Options");
+            setActionSheetActions([
+                {
+                    label: "Report",
+                    icon: Flag,
+                    onPress: () => Alert.alert("Report", "Thanks for reporting. We will check it soon.")
+                }
+            ]);
         }
+        setActionSheetVisible(true);
     };
 
     return (
@@ -221,6 +250,13 @@ export function PostItem({ post, onDelete }: PostItemProps) {
                 </TouchableOpacity>
                 <Text style={styles.timeAgo}>{new Date(post.createdAt).toLocaleDateString()}</Text>
             </View>
+
+            <ActionSheet
+                visible={actionSheetVisible}
+                onClose={() => setActionSheetVisible(false)}
+                title={actionSheetTitle}
+                actions={actionSheetActions}
+            />
         </View>
     );
 }

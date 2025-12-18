@@ -11,6 +11,7 @@ import { Heart, MessageCircle, Send } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useAuthStore } from '../store/useAuthStore';
 import { getNotifications } from '../services/notificationService';
+import Toast from '../components/Toast';
 
 export default function HomeScreen() {
     const navigation = useNavigation<any>();
@@ -19,6 +20,16 @@ export default function HomeScreen() {
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
+
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToastMessage(message);
+        setToastType(type);
+        setToastVisible(true);
+    };
 
     const fetchPosts = async () => {
         try {
@@ -64,7 +75,9 @@ export default function HomeScreen() {
 
     const renderHeader = () => (
         <View style={styles.header}>
-            <Text style={styles.logo}>SOCial</Text>
+            <View style={styles.logoContainer}>
+                <Image source={require('../../assets/logo.png')} style={styles.logoImage} />
+            </View>
             <View style={styles.headerIcons}>
                 <TouchableOpacity
                     style={styles.iconButton}
@@ -122,6 +135,7 @@ export default function HomeScreen() {
                         post={item}
                         onDelete={(deletedPostId) => {
                             setPosts(prev => prev.filter(p => p.id !== deletedPostId));
+                            showToast("Post deleted successfully", "success");
                         }}
                     />
                 )}
@@ -139,6 +153,12 @@ export default function HomeScreen() {
                 maxToRenderPerBatch={5}
                 windowSize={5}
                 removeClippedSubviews={true}
+            />
+            <Toast
+                visible={toastVisible}
+                message={toastMessage}
+                type={toastType}
+                onDismiss={() => setToastVisible(false)}
             />
         </SafeAreaView>
     );
@@ -164,11 +184,15 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
     },
-    logo: {
-        fontSize: 24,
-        fontWeight: 'bold',
-        fontStyle: 'italic',
-        color: colors.text,
+    logoContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    logoImage: {
+        width: 100,
+        height: 40,
+        resizeMode: 'contain',
+        marginRight: spacing.s,
     },
     headerIcons: {
         flexDirection: 'row',

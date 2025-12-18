@@ -43,6 +43,9 @@ export interface Comment {
     userAvatar?: string;
     text: string;
     createdAt: number;
+    parentId?: string;
+    replyToUsername?: string;
+    replies?: Comment[];
 }
 
 export interface ChatRoom {
@@ -69,7 +72,7 @@ export interface Notification {
     senderId: string;
     senderName: string;
     senderAvatar?: string;
-    type: 'like' | 'comment' | 'follow';
+    type: 'like' | 'comment' | 'follow' | 'mention';
     postId?: string;
     read: boolean;
     createdAt: number;

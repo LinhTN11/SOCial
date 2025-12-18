@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../navigation/AuthStack';
@@ -48,82 +48,115 @@ export default function SignupScreen() {
     };
 
     return (
-        <View style={styles.container}>
-            <Text style={styles.title}>Sign Up</Text>
+        <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={styles.container}
+        >
+            <ScrollView
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+            >
+                <Image source={require('../../assets/logo.png')} style={styles.logo} />
+                <Text style={styles.title}>Sign Up</Text>
 
-            <TextInput
-                style={styles.input}
-                placeholder="Username"
-                value={username}
-                onChangeText={setUsername}
-                autoCapitalize="none"
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-                autoCapitalize="none"
-                keyboardType="email-address"
-            />
-            <TextInput
-                style={styles.input}
-                placeholder="Password"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry
-            />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Username"
+                    value={username}
+                    onChangeText={setUsername}
+                    autoCapitalize="none"
+                />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Email"
+                    value={email}
+                    onChangeText={setEmail}
+                    autoCapitalize="none"
+                    keyboardType="email-address"
+                />
+                <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    value={password}
+                    onChangeText={setPassword}
+                    secureTextEntry
+                />
 
-            <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={loading}>
-                {loading ? (
-                    <ActivityIndicator color={colors.white} />
-                ) : (
-                    <Text style={styles.buttonText}>Sign Up</Text>
-                )}
-            </TouchableOpacity>
+                <TouchableOpacity style={styles.button} onPress={handleSignup} disabled={loading}>
+                    {loading ? (
+                        <ActivityIndicator color={colors.white} />
+                    ) : (
+                        <Text style={styles.buttonText}>Sign Up</Text>
+                    )}
+                </TouchableOpacity>
 
-            <TouchableOpacity onPress={() => navigation.goBack()}>
-                <Text style={styles.linkText}>Already have an account? Log in</Text>
-            </TouchableOpacity>
-        </View>
+                <TouchableOpacity onPress={() => navigation.goBack()}>
+                    <Text style={styles.linkText}>Already have an account? Log in</Text>
+                </TouchableOpacity>
+            </ScrollView>
+        </KeyboardAvoidingView>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
+        backgroundColor: colors.background,
+    },
+    scrollContent: {
+        flexGrow: 1,
         justifyContent: 'center',
         padding: spacing.l,
-        backgroundColor: colors.background,
+    },
+    // ...
+    logo: {
+        width: 100,
+        height: 100,
+        resizeMode: 'contain',
+        alignSelf: 'center',
+        marginBottom: spacing.m,
     },
     title: {
         ...typography.header,
         textAlign: 'center',
         marginBottom: spacing.xl,
         color: colors.primary,
-        fontSize: 32,
+        fontSize: 36,
+        letterSpacing: 1,
     },
     input: {
         borderWidth: 1,
         borderColor: colors.border,
-        borderRadius: 5,
+        borderRadius: 12,
         padding: spacing.m,
+        paddingHorizontal: spacing.l,
         marginBottom: spacing.m,
         backgroundColor: colors.gray,
+        fontSize: 16,
     },
     button: {
         backgroundColor: colors.primary,
-        padding: spacing.m,
-        borderRadius: 5,
+        paddingVertical: spacing.m + 4,
+        borderRadius: 25,
         alignItems: 'center',
-        marginBottom: spacing.m,
+        marginBottom: spacing.l,
+        marginTop: spacing.s,
+        shadowColor: colors.primary,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 4,
     },
     buttonText: {
         color: colors.white,
         fontWeight: 'bold',
+        fontSize: 16,
+        letterSpacing: 0.5,
     },
     linkText: {
-        color: colors.primary,
+        color: colors.textSecondary,
         textAlign: 'center',
+        fontSize: 14,
     },
 });

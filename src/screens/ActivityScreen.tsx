@@ -84,15 +84,7 @@ export default function ActivityScreen() {
         if (item.type === 'follow') {
             navigation.navigate('UserProfile', { userId: item.senderId });
         } else if (item.postId) {
-            // Navigate to post details
-            // We need to fetch the post first or just pass ID if PostDetail supports fetching
-            // Assuming PostDetail needs a Post object, we might need to fetch it.
-            // For now, let's assume we can navigate to a screen that fetches by ID or just UserProfile
-            // Actually, let's navigate to UserProfile for now as a fallback, or implement PostDetail fetch.
-            // Ideally: navigation.navigate('PostDetail', { postId: item.postId });
-            // But our PostDetailScreen expects a 'post' object in params.
-            // Let's just go to UserProfile for simplicity in this MVP, or try to implement PostDetail fetch.
-            navigation.navigate('UserProfile', { userId: item.senderId });
+            navigation.navigate('PostDetail', { postId: item.postId });
         }
     };
 
@@ -101,13 +93,20 @@ export default function ActivityScreen() {
             style={[styles.itemContainer, !item.read && styles.unreadItem]}
             onPress={() => handlePress(item)}
         >
-            <Image
-                source={{ uri: item.senderAvatar || 'https://via.placeholder.com/50' }}
-                style={styles.avatar}
-            />
+            <TouchableOpacity onPress={() => navigation.navigate('UserProfile', { userId: item.senderId })}>
+                <Image
+                    source={{ uri: item.senderAvatar || 'https://via.placeholder.com/50' }}
+                    style={styles.avatar}
+                />
+            </TouchableOpacity>
             <View style={styles.textContainer}>
                 <Text style={styles.text}>
-                    <Text style={styles.username}>{item.senderName}</Text>
+                    <Text
+                        style={styles.username}
+                        onPress={() => navigation.navigate('UserProfile', { userId: item.senderId })}
+                    >
+                        {item.senderName}
+                    </Text>
                     {item.type === 'like' && ' liked your post.'}
                     {item.type === 'comment' && ' commented on your post.'}
                     {item.type === 'follow' && ' started following you.'}
@@ -115,10 +114,12 @@ export default function ActivityScreen() {
                 <Text style={styles.time}>{formatTimeAgo(item.createdAt)}</Text>
             </View>
             {item.type !== 'follow' && item.postId && postImages[item.postId] && (
-                <Image
-                    source={{ uri: postImages[item.postId] }}
-                    style={styles.postThumbnail}
-                />
+                <TouchableOpacity onPress={() => navigation.navigate('PostDetail', { postId: item.postId })}>
+                    <Image
+                        source={{ uri: postImages[item.postId] }}
+                        style={styles.postThumbnail}
+                    />
+                </TouchableOpacity>
             )}
         </TouchableOpacity>
     );
@@ -180,12 +181,14 @@ const styles = StyleSheet.create({
     itemContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: spacing.m,
+        paddingVertical: spacing.m,
+        paddingHorizontal: spacing.l,
         borderBottomWidth: 1,
         borderBottomColor: colors.gray,
+        backgroundColor: colors.background,
     },
     unreadItem: {
-        backgroundColor: colors.lightGray, // Define this or use a subtle highlight
+        backgroundColor: 'rgba(56, 189, 248, 0.1)', // Light blue tint for unread
     },
     avatar: {
         width: 44,

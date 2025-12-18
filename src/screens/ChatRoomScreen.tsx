@@ -122,36 +122,39 @@ export default function ChatRoomScreen() {
     };
 
     return (
-        <SafeAreaView style={styles.container}>
+        <SafeAreaView style={styles.container} edges={['left', 'right', 'bottom']}>
 
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
                 keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
             >
-                <FlatList
-                    ref={flatListRef}
-                    data={messages}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderItem}
-                    inverted
-                    contentContainerStyle={styles.listContent}
-                />
-                <View style={styles.inputContainer}>
-                    <TouchableOpacity onPress={handlePickImage} style={styles.iconButton}>
-                        <ImageIcon color={colors.textSecondary} size={24} />
-                    </TouchableOpacity>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Message..."
-                        placeholderTextColor={colors.textSecondary}
-                        value={text}
-                        onChangeText={setText}
-                        multiline
+                <View style={{ flex: 1 }}>
+                    <FlatList
+                        ref={flatListRef}
+                        data={messages}
+                        keyExtractor={(item) => item.id}
+                        renderItem={renderItem}
+                        inverted
+                        contentContainerStyle={styles.listContent}
+                        style={{ flex: 1 }}
                     />
-                    <TouchableOpacity onPress={handleSend} disabled={!text.trim()}>
-                        <Send color={colors.primary} size={24} />
-                    </TouchableOpacity>
+                    <View style={styles.inputContainer}>
+                        <TouchableOpacity onPress={handlePickImage} style={styles.iconButton}>
+                            <ImageIcon color={colors.textSecondary} size={24} />
+                        </TouchableOpacity>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Message..."
+                            placeholderTextColor={colors.textSecondary}
+                            value={text}
+                            onChangeText={setText}
+                            multiline
+                        />
+                        <TouchableOpacity onPress={handleSend} disabled={!text.trim()}>
+                            <Send color={colors.primary} size={24} />
+                        </TouchableOpacity>
+                    </View>
                 </View>
             </KeyboardAvoidingView>
         </SafeAreaView>
@@ -235,10 +238,11 @@ const styles = StyleSheet.create({
     input: {
         flex: 1,
         marginRight: spacing.m,
-        padding: spacing.s,
+        padding: spacing.m,
         backgroundColor: colors.gray,
-        borderRadius: 20,
+        borderRadius: 24, // Pill shape
         color: colors.text,
         maxHeight: 100,
+        fontSize: 16,
     },
 });

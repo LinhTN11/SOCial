@@ -82,22 +82,25 @@ export const sendNotification = async (
     senderId: string,
     senderName: string,
     senderAvatar: string | undefined,
-    type: 'like' | 'comment' | 'follow',
+    type: 'like' | 'comment' | 'follow' | 'mention',
     postId?: string
 ) => {
     if (receiverId === senderId) return; // Don't notify self
 
     try {
-        const newNotification: Omit<Notification, 'id'> = {
+        const newNotification: Record<string, any> = {
             receiverId,
             senderId,
             senderName,
-            senderAvatar,
+            senderAvatar: senderAvatar || null,
             type,
-            postId,
             read: false,
             createdAt: Date.now(),
         };
+
+        if (postId) {
+            newNotification.postId = postId;
+        }
         await addDoc(collection(db, 'users', receiverId, 'notifications'), newNotification);
     } catch (error) {
         console.error('Error sending notification:', error);

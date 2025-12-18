@@ -124,7 +124,7 @@ export const toggleLikePost = async (postId: string, currentUser: User, isLiked:
     }
 };
 
-export const addComment = async (postId: string, userId: string, username: string, userAvatar: string | undefined, text: string) => {
+export const addComment = async (postId: string, userId: string, username: string, userAvatar: string | undefined, text: string, mentions: string[] = [], parentId?: string, replyToUsername?: string) => {
     try {
         const newComment = {
             postId,
@@ -133,6 +133,8 @@ export const addComment = async (postId: string, userId: string, username: strin
             userAvatar: userAvatar ?? null,
             text,
             createdAt: Date.now(),
+            parentId: parentId || null,
+            replyToUsername: replyToUsername || null,
         };
         await addDoc(collection(db, 'posts', postId, 'comments'), newComment);
 
@@ -144,12 +146,70 @@ export const addComment = async (postId: string, userId: string, username: strin
                 commentsCount: (postSnap.data().commentsCount || 0) + 1,
             });
 
-            // Send notification
+            // Send notification to post owner
             const postData = postSnap.data() as Post;
-            await sendNotification(postData.userId, userId, username, userAvatar, 'comment', postId);
+            // Only notify post owner if they are not the commenter
+            if (postData.userId !== userId) {
+                await sendNotification(postData.userId, userId, username, userAvatar, 'comment', postId);
+            }
+
+            // If it's a reply, notify the parent comment author
+            if (parentId && replyToUsername) {
+                // Note: We need the parent comment's author ID. 
+                // Optimization: Pass parentAuthorId if available, or fetch parent comment.
+                // For now, let's assume we might need to fetch it if not passed. 
+                // ACTUALLY, simpler to fetch the parent comment here to get the author.
+                const parentCommentRef = doc(db, 'posts', postId, 'comments', parentId);
+                const parentCommentSnap = await getDoc(parentCommentRef);
+                if (parentCommentSnap.exists()) {
+                    const parentData = parentCommentSnap.data();
+                    if (parentData.userId !== userId) {
+                        await sendNotification(parentData.userId, userId, username, userAvatar, 'comment', postId);
+                    }
+                }
+            }
+
+            // Send notifications to mentioned users
+            for (const mentionedUserId of mentions) {
+                await sendNotification(mentionedUserId, userId, username, userAvatar, 'mention', postId);
+            }
         }
     } catch (error) {
         console.error('Error adding comment:', error);
+        throw error;
+    }
+};
+
+// Update a comment
+export const updateComment = async (postId: string, commentId: string, text: string) => {
+    try {
+        const commentRef = doc(db, 'posts', postId, 'comments', commentId);
+        await updateDoc(commentRef, {
+            text,
+            isEdited: true,
+        });
+    } catch (error) {
+        console.error('Error updating comment:', error);
+        throw error;
+    }
+};
+
+// Delete a comment
+export const deleteComment = async (postId: string, commentId: string) => {
+    try {
+        await deleteDoc(doc(db, 'posts', postId, 'comments', commentId));
+
+        // Update comment count
+        const postRef = doc(db, 'posts', postId);
+        const postSnap = await getDoc(postRef);
+        if (postSnap.exists()) {
+            const currentCount = postSnap.data().commentsCount || 0;
+            await updateDoc(postRef, {
+                commentsCount: Math.max(0, currentCount - 1),
+            });
+        }
+    } catch (error) {
+        console.error('Error deleting comment:', error);
         throw error;
     }
 };

@@ -7,12 +7,23 @@ import { Story } from '../types';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { Plus } from 'lucide-react-native';
+import Toast from './Toast';
 
 export default function StoryBar() {
     const { user } = useAuthStore();
     const navigation = useNavigation<any>();
     const [stories, setStories] = useState<Story[]>([]);
     const [myStory, setMyStory] = useState<Story | null>(null);
+
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToastMessage(message);
+        setToastType(type);
+        setToastVisible(true);
+    };
 
     useEffect(() => {
         if (user) {
@@ -77,10 +88,10 @@ export default function StoryBar() {
         if (!result.canceled) {
             try {
                 await uploadStory(user.uid, user.username, user.photoURL, result.assets[0].uri);
-                Alert.alert("Success", "Story added!");
+                showToast("Story added successfully!", "success");
                 loadStories();
             } catch (error) {
-                Alert.alert("Error", "Failed to add story");
+                showToast("Failed to add story", "error");
             }
         }
     };
@@ -147,9 +158,9 @@ export default function StoryBar() {
             borderColor: colors.background,
         },
         noBorder: {
-            width: 64,
-            height: 64,
-            borderRadius: 32,
+            width: 70, // Slightly larger to match the outer ring visual weight
+            height: 70,
+            borderRadius: 35,
             borderWidth: 0,
             justifyContent: 'center' as const,
             alignItems: 'center' as const,
@@ -208,6 +219,7 @@ export default function StoryBar() {
                         <Image
                             source={{ uri: user?.photoURL || 'https://via.placeholder.com/70' }}
                             style={styles.avatar}
+                            resizeMode="cover"
                         />
                         {!myStory && (
                             <View style={styles.addIconContainer}>
@@ -235,6 +247,13 @@ export default function StoryBar() {
                     </TouchableOpacity>
                 ))}
             </ScrollView>
+            <Toast
+                visible={toastVisible}
+                message={toastMessage}
+                type={toastType}
+                onDismiss={() => setToastVisible(false)}
+                topOffset={10}
+            />
         </View>
     );
 }

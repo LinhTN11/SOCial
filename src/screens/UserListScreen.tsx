@@ -139,9 +139,10 @@ const styles = StyleSheet.create({
     userItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: spacing.s,
+        paddingVertical: spacing.m,
+        paddingHorizontal: spacing.m, // Consistent with others
         borderBottomWidth: 1,
-        borderBottomColor: colors.gray,
+        borderBottomColor: colors.border, // Use border color consistent with others
     },
     avatar: {
         width: 50,

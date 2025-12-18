@@ -10,6 +10,7 @@ export interface Reel {
     comments: number;
     userAvatar?: string;
     userId: string;
+    contentMode?: 'contain' | 'cover'; // Aspect ratio preference
 }
 
 
@@ -189,7 +190,7 @@ export const uploadVideoToCloudinary = async (uri: string): Promise<string> => {
     }
 };
 
-export const uploadReel = async (userId: string, username: string, userAvatar: string | undefined, videoUri: string, description: string) => {
+export const uploadReel = async (userId: string, username: string, userAvatar: string | undefined, videoUri: string, description: string, contentMode: 'contain' | 'cover' = 'contain') => {
     try {
         // Upload video to Cloudinary first
         console.log('Uploading video to Cloudinary...');
@@ -204,6 +205,7 @@ export const uploadReel = async (userId: string, username: string, userAvatar: s
             description,
             likes: 0,
             comments: 0,
+            contentMode,
         };
         await addDoc(collection(db, 'reels'), newReel);
         console.log('Reel saved to Firestore');
@@ -245,7 +247,7 @@ export const deleteReel = async (reelId: string): Promise<void> => {
 };
 
 // Comment management for reels
-export const addReelComment = async (reelId: string, userId: string, username: string, userAvatar: string | undefined, text: string) => {
+export const addReelComment = async (reelId: string, userId: string, username: string, userAvatar: string | undefined, text: string, parentId?: string, replyToUsername?: string) => {
     try {
         const newComment = {
             reelId,
@@ -254,6 +256,8 @@ export const addReelComment = async (reelId: string, userId: string, username: s
             userAvatar: userAvatar ?? null,
             text,
             createdAt: Date.now(),
+            parentId: parentId || null,
+            replyToUsername: replyToUsername || null,
         };
         await addDoc(collection(db, 'reels', reelId, 'comments'), newComment);
 
@@ -267,6 +271,40 @@ export const addReelComment = async (reelId: string, userId: string, username: s
         }
     } catch (error) {
         console.error('Error adding reel comment:', error);
+        throw error;
+    }
+};
+
+// Update a reel comment
+export const updateReelComment = async (reelId: string, commentId: string, text: string) => {
+    try {
+        const commentRef = doc(db, 'reels', reelId, 'comments', commentId);
+        await updateDoc(commentRef, {
+            text,
+            isEdited: true,
+        });
+    } catch (error) {
+        console.error('Error updating reel comment:', error);
+        throw error;
+    }
+};
+
+// Delete a reel comment
+export const deleteReelComment = async (reelId: string, commentId: string) => {
+    try {
+        await deleteDoc(doc(db, 'reels', reelId, 'comments', commentId));
+
+        // Update comment count
+        const reelRef = doc(db, 'reels', reelId);
+        const reelSnap = await getDoc(reelRef);
+        if (reelSnap.exists()) {
+            const currentCount = reelSnap.data().comments || 0;
+            await updateDoc(reelRef, {
+                comments: Math.max(0, currentCount - 1),
+            });
+        }
+    } catch (error) {
+        console.error('Error deleting reel comment:', error);
         throw error;
     }
 };

@@ -6,6 +6,7 @@ import ReelItem from '../components/ReelItem';
 import { getReels, Reel } from '../services/reelService';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Camera } from 'lucide-react-native';
+import Toast from '../components/Toast';
 
 const { height } = Dimensions.get('window');
 
@@ -15,12 +16,10 @@ export default function ReelsScreen() {
     const [activeReelId, setActiveReelId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
-    // Reload reels whenever screen is focused
-    useFocusEffect(
-        React.useCallback(() => {
-            loadReels();
-        }, [])
-    );
+    // Load reels only once on mount
+    useEffect(() => {
+        loadReels();
+    }, []);
 
     const loadReels = async () => {
         const fetchedReels = await getReels();
@@ -45,15 +44,26 @@ export default function ReelsScreen() {
         navigation.navigate('Comments', { postId: reelId, isReel: true });
     };
 
+    const [toastVisible, setToastVisible] = useState(false);
+    const [toastMessage, setToastMessage] = useState('');
+    const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+    const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+        setToastMessage(message);
+        setToastType(type);
+        setToastVisible(true);
+    };
+
     const handleDelete = async (reelId: string) => {
         try {
             const { deleteReel } = await import('../services/reelService');
             await deleteReel(reelId);
             // Reload reels after delete
             loadReels();
+            showToast("Reel deleted successfully", "success");
         } catch (error) {
             console.error('Error deleting reel:', error);
-            alert('Failed to delete reel. Please try again.');
+            showToast("Failed to delete reel", "error");
         }
     };
 
@@ -74,10 +84,10 @@ export default function ReelsScreen() {
                             await clearAllReels();
                             await seedReels();
                             await loadReels();
-                            Alert.alert("Success", "Reels cleared and reseeded!");
+                            showToast("Reels cleared and reseeded!", "success");
                         } catch (error) {
                             console.error('Error clearing reels:', error);
-                            Alert.alert("Error", "Failed to clear reels");
+                            showToast("Failed to clear reels", "error");
                         }
                     }
                 }
@@ -92,10 +102,10 @@ export default function ReelsScreen() {
             const { deleteInvalidReels } = await import('../services/reelService');
             const deletedCount = await deleteInvalidReels();
             await loadReels();
-            Alert.alert("Success", `Deleted ${deletedCount} invalid reel(s)`);
+            showToast(`Deleted ${deletedCount} invalid reel(s)`, "success");
         } catch (error) {
             console.error('Error deleting invalid reels:', error);
-            Alert.alert("Error", "Failed to delete invalid reels");
+            showToast("Failed to delete invalid reels", "error");
         } finally {
             setLoading(false);
         }
@@ -124,7 +134,7 @@ export default function ReelsScreen() {
                 <FlatList
                     data={reels}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
+                    renderItem={({ item, index }) => (
                         <ReelItem
                             item={item}
                             isActive={item.id === activeReelId}
@@ -132,6 +142,11 @@ export default function ReelsScreen() {
                             onDelete={handleDelete}
                         />
                     )}
+                    getItemLayout={(data, index) => ({
+                        length: height,
+                        offset: height * index,
+                        index,
+                    })}
                     pagingEnabled
                     showsVerticalScrollIndicator={false}
                     snapToInterval={height}
@@ -139,6 +154,16 @@ export default function ReelsScreen() {
                     decelerationRate="fast"
                     onViewableItemsChanged={onViewableItemsChanged}
                     viewabilityConfig={viewabilityConfig}
+                    initialNumToRender={1}
+                    maxToRenderPerBatch={1}
+                    windowSize={3}
+                    removeClippedSubviews={true}
+                />
+                <Toast
+                    visible={toastVisible}
+                    message={toastMessage}
+                    type={toastType}
+                    onDismiss={() => setToastVisible(false)}
                 />
             </SafeAreaView>
         </View >

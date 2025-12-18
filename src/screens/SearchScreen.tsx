@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, Image, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TextInput, FlatList, TouchableOpacity, Image, Dimensions, KeyboardAvoidingView, Platform } from 'react-native';
 import { colors, spacing } from '../theme';
 import { db } from '../firebaseConfig';
 import { collection, query, getDocs, limit } from 'firebase/firestore';
@@ -10,6 +10,8 @@ import { getPosts } from '../services/postService';
 const { width } = Dimensions.get('window');
 const NUM_COLUMNS = 3;
 const TILE_SIZE = width / NUM_COLUMNS;
+
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SearchScreen() {
     const navigation = useNavigation<any>();
@@ -102,40 +104,45 @@ export default function SearchScreen() {
     );
 
     return (
-        <View style={styles.container}>
-            <View style={styles.searchContainer}>
-                <TextInput
-                    style={styles.searchInput}
-                    placeholder="Search users..."
-                    value={searchText}
-                    onChangeText={handleSearch}
-                    autoCapitalize="none"
-                />
-            </View>
+        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+            <KeyboardAvoidingView
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                style={{ flex: 1 }}
+            >
+                <View style={styles.searchContainer}>
+                    <TextInput
+                        style={styles.searchInput}
+                        placeholder="Search users..."
+                        value={searchText}
+                        onChangeText={handleSearch}
+                        autoCapitalize="none"
+                    />
+                </View>
 
-            {searchText.length > 0 ? (
-                <FlatList
-                    key="users-list"
-                    data={users}
-                    keyExtractor={(item, index) => item.uid || `user-${index}`}
-                    renderItem={renderUserItem}
-                    ListEmptyComponent={
-                        <Text style={styles.emptyText}>No users found</Text>
-                    }
-                />
-            ) : (
-                <FlatList
-                    key="explore-grid"
-                    data={explorePosts}
-                    keyExtractor={(item, index) => item.id || `post-${index}`}
-                    renderItem={renderExploreItem}
-                    numColumns={NUM_COLUMNS}
-                    ListEmptyComponent={
-                        <Text style={styles.emptyText}>No posts to explore</Text>
-                    }
-                />
-            )}
-        </View>
+                {searchText.length > 0 ? (
+                    <FlatList
+                        key="users-list"
+                        data={users}
+                        keyExtractor={(item, index) => item.uid || `user-${index}`}
+                        renderItem={renderUserItem}
+                        ListEmptyComponent={
+                            <Text style={styles.emptyText}>No users found</Text>
+                        }
+                    />
+                ) : (
+                    <FlatList
+                        key="explore-grid"
+                        data={explorePosts}
+                        keyExtractor={(item, index) => item.id || `post-${index}`}
+                        renderItem={renderExploreItem}
+                        numColumns={NUM_COLUMNS}
+                        ListEmptyComponent={
+                            <Text style={styles.emptyText}>No posts to explore</Text>
+                        }
+                    />
+                )}
+            </KeyboardAvoidingView>
+        </SafeAreaView>
     );
 }
 
@@ -143,17 +150,20 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
-        paddingTop: 50,
+        // paddingTop: 50, // Removed hardcoded padding, use SafeAreaView in component
     },
     searchContainer: {
         padding: spacing.m,
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
+        paddingTop: spacing.s, // Add some top padding if SafeAreaView is used
     },
     searchInput: {
         backgroundColor: colors.gray,
-        padding: spacing.s,
-        borderRadius: 8,
+        padding: spacing.m, // More padding
+        paddingHorizontal: spacing.l,
+        borderRadius: 24, // Pill shape
+        fontSize: 16,
     },
     userItem: {
         flexDirection: 'row',
