@@ -61,8 +61,16 @@ export default function EditProfileScreen() {
 
             await updateUserProfile(user.uid, updates);
 
-            // Update local store
-            setUser({ ...user, ...updates });
+            // Fetch fresh user data to ensure we have the absolute latest state
+            const { getUserProfile } = await import('../services/userService');
+            const freshUser = await getUserProfile(user.uid);
+
+            if (freshUser) {
+                setUser(freshUser);
+            } else {
+                // Fallback
+                setUser({ ...user, ...updates });
+            }
 
             showToast('Profile updated successfully', 'success');
 
@@ -70,9 +78,8 @@ export default function EditProfileScreen() {
             setTimeout(() => {
                 navigation.goBack();
             }, 1000);
-        } catch (error) {
-            console.error(error);
-            showToast('Failed to update profile', 'error');
+        } catch (error: any) {
+            showToast(error.message || 'Failed to update profile', 'error');
         } finally {
             setLoading(false);
         }

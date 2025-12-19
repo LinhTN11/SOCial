@@ -44,11 +44,29 @@ export default function ProfileScreen() {
     setLoading(true);
 
     // Fetch User Profile
-    if (isOwnProfile) {
-      setUser(currentUser);
+    let targetUser = user;
+    if (isOwnProfile && currentUser) {
+      // Always fetch fresh data for own profile to ensure savedPosts are up to date
+      const freshUser = await getUserProfile(currentUser.uid);
+      if (freshUser) {
+        targetUser = freshUser;
+        setUser(freshUser);
+        // Update store if different (to keep app in sync)
+        if (
+          JSON.stringify(freshUser.savedPosts) !== JSON.stringify(currentUser.savedPosts) ||
+          JSON.stringify(freshUser.following) !== JSON.stringify(currentUser.following) ||
+          JSON.stringify(freshUser.followers) !== JSON.stringify(currentUser.followers)
+        ) {
+          setAuthUser(freshUser);
+        }
+      } else {
+        targetUser = currentUser;
+        setUser(currentUser);
+      }
     } else {
       const fetchedUser = await getUserProfile(userId);
       setUser(fetchedUser);
+      targetUser = fetchedUser;
     }
 
     // Fetch User Posts
@@ -65,10 +83,10 @@ export default function ProfileScreen() {
     }
 
     // Fetch Saved Posts (only for own profile)
-    if (isOwnProfile && currentUser?.savedPosts && currentUser.savedPosts.length > 0) {
+    if (isOwnProfile && targetUser?.savedPosts && targetUser.savedPosts.length > 0) {
       try {
         const savedPostsData: Post[] = [];
-        for (const postId of currentUser.savedPosts) {
+        for (const postId of targetUser.savedPosts) {
           const postDoc = await getDoc(doc(db, 'posts', postId));
           if (postDoc.exists()) {
             savedPostsData.push({ id: postDoc.id, ...postDoc.data() } as Post);
@@ -78,6 +96,8 @@ export default function ProfileScreen() {
       } catch (error) {
         console.error('Error fetching saved posts:', error);
       }
+    } else if (isOwnProfile) {
+      setSavedPosts([]);
     }
 
     setLoading(false);
@@ -85,7 +105,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     loadData();
-  }, [userId, currentUser, isOwnProfile]);
+  }, [userId, isOwnProfile]);
 
   // Refresh when screen comes back into focus (e.g., after saving a post)
   useEffect(() => {
@@ -108,17 +128,43 @@ export default function ProfileScreen() {
   const handleFollowToggle = async () => {
     if (!currentUser || !user) return;
 
-    // Optimistic update
-    setIsFollowing(!isFollowing);
+    const isFollowingNow = !isFollowing;
+
+    // 1. Immediate Optimistic UI Update
+    setIsFollowing(isFollowingNow);
+
+    // 2. Immediate Optimistic Store Update (Fixes the flicker/revert issue)
+    // We update the local 'currentUser' immediately so the useEffect doesn't see stale data
+    // when 'user' (target) is reloaded in the next steps.
+    const optimisticUser = { ...currentUser };
+    if (isFollowingNow) {
+      optimisticUser.following = [...(optimisticUser.following || []), user.uid];
+    } else {
+      optimisticUser.following = (optimisticUser.following || []).filter(id => id !== user.uid);
+    }
+    setAuthUser(optimisticUser);
 
     try {
-      if (isFollowing) {
-        await unfollowUser(currentUser.uid, user.uid);
-      } else {
+      if (isFollowingNow) {
         await followUser(currentUser.uid, user.uid);
+      } else {
+        await unfollowUser(currentUser.uid, user.uid);
       }
+
+      // 3. Reload profile data (updates follower count of the TARGET user)
+      await loadData();
+
+      // 4. Background Sync: Fetch fresh CURRENT USER data from server
+      // This confirms our optimistic update with the server's truth.
+      const freshMe = await getUserProfile(currentUser.uid);
+      if (freshMe) {
+        setAuthUser(freshMe);
+      }
+
     } catch (error) {
-      setIsFollowing(isFollowing); // Revert
+      // Revert everything on error
+      setIsFollowing(!isFollowingNow);
+      setAuthUser(currentUser); // Revert store
       console.error(error);
     }
   };
@@ -411,7 +457,7 @@ export default function ProfileScreen() {
         )}
         <View style={styles.profileInfo}>
           <Image
-            source={{ uri: (isOwnProfile ? currentUser?.photoURL : user?.photoURL) || 'https://via.placeholder.com/80' }}
+            source={{ uri: (user?.photoURL) || 'https://via.placeholder.com/80' }}
             style={styles.avatar}
           />
           <View style={styles.stats}>
@@ -419,12 +465,12 @@ export default function ProfileScreen() {
               <Text style={styles.statValue}>{posts.length}</Text>
               <Text style={styles.statLabel}>Posts</Text>
             </View>
-            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('UserList', { type: 'followers', entityId: isOwnProfile ? currentUser?.uid : user?.uid, title: 'Followers' })}>
-              <Text style={styles.statValue}>{(isOwnProfile ? currentUser?.followers?.length : user?.followers?.length) || 0}</Text>
+            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('UserList', { type: 'followers', entityId: user?.uid || '', title: 'Followers' })}>
+              <Text style={styles.statValue}>{(user?.followers?.length) || 0}</Text>
               <Text style={styles.statLabel}>Followers</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('UserList', { type: 'following', entityId: isOwnProfile ? currentUser?.uid : user?.uid, title: 'Following' })}>
-              <Text style={styles.statValue}>{(isOwnProfile ? currentUser?.following?.length : user?.following?.length) || 0}</Text>
+            <TouchableOpacity style={styles.statItem} onPress={() => navigation.navigate('UserList', { type: 'following', entityId: user?.uid || '', title: 'Following' })}>
+              <Text style={styles.statValue}>{(user?.following?.length) || 0}</Text>
               <Text style={styles.statLabel}>Following</Text>
             </TouchableOpacity>
           </View>
@@ -432,13 +478,13 @@ export default function ProfileScreen() {
 
         {isOwnProfile ? (
           <TouchableOpacity onPress={handleAccountMenu} style={styles.usernameContainer}>
-            <Text style={styles.username}>{currentUser?.username}</Text>
+            <Text style={styles.username}>{user?.username}</Text>
             <ChevronDown color={colors.text} size={16} strokeWidth={2.5} style={{ marginLeft: 4 }} />
           </TouchableOpacity>
         ) : (
           <Text style={styles.username}>{user?.username}</Text>
         )}
-        <Text style={styles.bio}>{(isOwnProfile ? currentUser?.bio : user?.bio) || 'No bio yet'}</Text>
+        <Text style={styles.bio}>{(user?.bio) || 'No bio yet'}</Text>
 
         {isOwnProfile ? (
           <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>

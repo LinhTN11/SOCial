@@ -59,7 +59,7 @@ export default function SearchScreen() {
             const searchLower = text.toLowerCase();
             const filtered = allUsers.filter(user =>
                 (user.username && user.username.toLowerCase().includes(searchLower)) ||
-                (user.email && user.email.toLowerCase().includes(searchLower))
+                (user.displayName && user.displayName.toLowerCase().includes(searchLower))
             );
 
             // Only update if this is still the current search

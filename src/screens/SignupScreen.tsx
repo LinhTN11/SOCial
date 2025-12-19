@@ -25,6 +25,17 @@ export default function SignupScreen() {
         }
         setLoading(true);
         try {
+            // Check username availability first (to avoid creating auth user if username taken)
+            // Note: We need to import checkUsernameAvailability from userService
+            const { checkUsernameAvailability } = await import('../services/userService');
+            const isAvailable = await checkUsernameAvailability(username);
+
+            if (!isAvailable) {
+                Alert.alert('Error', 'Username already taken');
+                setLoading(false);
+                return;
+            }
+
             const userCredential = await createUserWithEmailAndPassword(auth, email, password);
             const user = userCredential.user;
 

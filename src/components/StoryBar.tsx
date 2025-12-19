@@ -221,17 +221,10 @@ export default function StoryBar() {
                             style={styles.avatar}
                             resizeMode="cover"
                         />
-                        {!myStory && (
-                            <View style={styles.addIconContainer}>
-                                <Plus color={colors.white} size={16} strokeWidth={3} />
-                            </View>
-                        )}
                     </TouchableOpacity>
-                    {myStory && (
-                        <TouchableOpacity style={styles.addIconContainerStandalone} onPress={handleAddStory}>
-                            <Plus color={colors.white} size={14} strokeWidth={3} />
-                        </TouchableOpacity>
-                    )}
+                    <TouchableOpacity style={styles.addIconContainerStandalone} onPress={handleAddStory}>
+                        <Plus color={colors.white} size={14} strokeWidth={3} />
+                    </TouchableOpacity>
                     <Text style={styles.username} numberOfLines={1}>Your Story</Text>
                 </View>
 
