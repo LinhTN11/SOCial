@@ -20,7 +20,7 @@ Tài liệu này gợi ý cách chia phần để 2 thành viên cùng học và
     -   Xử lý Đăng ký/Đăng nhập với Firebase Auth.
     -   Quản lý phiên đăng nhập (Zustand Auth Store).
 
-2.  **Profile System (Hồ sơ người dùng)**
+2.  **Profile System (Hồ sơ người dùng)*
     -   Màn hình trang cá nhân (`ProfileScreen`).
     -   Màn hình chỉnh sửa hồ sơ (`EditProfileScreen`).
     -   **Logic khó:** Đồng bộ dữ liệu người dùng toàn app (như lỗi mình vừa fix), xử lý đổi avatar/tên.
