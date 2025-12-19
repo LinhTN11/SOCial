@@ -21,6 +21,8 @@ export default function HomeScreen() {
     const [refreshing, setRefreshing] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
 
+    const [chatUnreadCount, setChatUnreadCount] = useState(0);
+
     const [toastVisible, setToastVisible] = useState(false);
     const [toastMessage, setToastMessage] = useState('');
     const [toastType, setToastType] = useState<'success' | 'error'>('success');
@@ -56,6 +58,26 @@ export default function HomeScreen() {
         });
         return unsubscribe;
     }, [navigation]);
+
+    // Subscribe to chat notifications (Red Dot)
+    useEffect(() => {
+        if (!user) return;
+
+        // Import dynamically to avoid cycle if necessary, or just use import at top (preferred)
+        const { subscribeToChatRooms } = require('../services/chatService');
+
+        const unsubscribe = subscribeToChatRooms(user.uid, (rooms: any[]) => {
+            let total = 0;
+            rooms.forEach(room => {
+                if (room.unreadCount && room.unreadCount[user.uid]) {
+                    total += room.unreadCount[user.uid];
+                }
+            });
+            setChatUnreadCount(total);
+        });
+
+        return () => unsubscribe();
+    }, [user]);
 
     const fetchUnreadCount = async () => {
         if (!user) return;
@@ -97,6 +119,13 @@ export default function HomeScreen() {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.iconButton} onPress={() => navigation.navigate('ChatList')}>
                     <MessageCircle color={colors.text} size={24} />
+                    {chatUnreadCount > 0 && (
+                        <View style={styles.badge}>
+                            <Text style={styles.badgeText}>
+                                {chatUnreadCount > 99 ? '99+' : chatUnreadCount}
+                            </Text>
+                        </View>
+                    )}
                 </TouchableOpacity>
             </View>
         </View>

@@ -49,11 +49,18 @@ export const sendMessage = async (roomId: string, senderId: string, text: string
 
         await addDoc(collection(db, 'chatRooms', roomId, 'messages'), newMessage);
 
-        // Update last message in room
-        await updateDoc(doc(db, 'chatRooms', roomId), {
+        // Update last message in room AND increment unread count for receiver
+        const { increment } = await import('firebase/firestore');
+        const updateData: any = {
             lastMessage: text,
             lastMessageTimestamp: Date.now(),
-        });
+        };
+
+        if (receiverId) {
+            updateData[`unreadCount.${receiverId}`] = increment(1);
+        }
+
+        await updateDoc(doc(db, 'chatRooms', roomId), updateData);
 
         // Simulate Push Notification by adding to 'notifications' collection
         if (receiverId) {
@@ -75,8 +82,7 @@ export const sendMessage = async (roomId: string, senderId: string, text: string
 
 export const markMessagesAsSeen = async (roomId: string, userId: string) => {
     try {
-        // Firestore limitation: only one != filter allowed
-        // Fetch messages not sent by current user, then filter by status client-side
+        // 1. Mark individual messages as seen (Visual for inside chat)
         const q = query(
             collection(db, 'chatRooms', roomId, 'messages'),
             where('senderId', '!=', userId)
@@ -87,12 +93,16 @@ export const markMessagesAsSeen = async (roomId: string, userId: string) => {
         // Filter out already seen messages client-side
         const unseenDocs = snapshot.docs.filter(doc => doc.data().status !== 'seen');
 
-        // Update only unseen messages
         const updates = unseenDocs.map(doc =>
             updateDoc(doc.ref, { status: 'seen' })
         );
 
         await Promise.all(updates);
+
+        // 2. Reset unread count for this user in the Room Document (Visual for Home Screen badge)
+        await updateDoc(doc(db, 'chatRooms', roomId), {
+            [`unreadCount.${userId}`]: 0
+        });
 
     } catch (error) {
         console.error('Error marking messages as seen:', error);
